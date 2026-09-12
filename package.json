@@ -7,11 +7,19 @@
   "main": "src/index.mjs",
   "exports": {
     ".": "./src/index.mjs",
+    "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-tool"
+      ]
     }
   },
   "keywords": [
@@ -26,7 +34,7 @@
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/index.mjs && node --check src/state.mjs && node --check src/cli-bridge.mjs && node --check src/watcher.mjs && node --check src/routes.mjs && node --check src/paths.mjs && node --check scripts/validate-linux.mjs",
+    "check": "node --check src/index.mjs && node --check src/state.mjs && node --check src/cli-bridge.mjs && node --check src/watcher.mjs && node --check src/routes.mjs && node --check src/paths.mjs && node --check lib/client.js && node --check scripts/validate-linux.mjs",
     "validate:linux": "node scripts/validate-linux.mjs",
     "pack:check": "npm pack --dry-run --json"
   },
@@ -41,6 +49,7 @@
   },
   "files": [
     "src",
+    "lib",
     "scripts",
     "docs",
     "cordis.patch.yml",
