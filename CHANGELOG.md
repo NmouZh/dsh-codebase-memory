@@ -9,6 +9,8 @@
 - Cross-VM mount detection: watches created on WSL2 DrvFs (`9p`) — and on NFS/FUSE/CIFS/SMB — enable polling automatically and record `pollingForcedBy`, unless `usePolling` was set explicitly.
 - `docs/adr/0001` and `docs/adr/0002` record the runtime-resolution and path-identity decisions.
 - `docs/architecture.md` documents the module map, the upstream `allow-root` gate, and the warm-daemon policy.
+- **Web UI tool rendering.** A browser half (`lib/client.js`, declared through `exports["./client"]` and `dsh.client`) registers one keyed `tool.call.toolview` entry per tool name, so each `mcp__codebase_memory__*` call renders as a card instead of raw text: status dot, summary, result chips, and a disclosure body dispatched by tool — search rows that open the file at the line, trace trees with hop badges, architecture and change reports as their own sections, a code card for `get_code_snippet`, per-scope verdicts for coverage, and label/edge tables for the graph schema. Unknown shapes degrade to plain text, and a truncated result says so.
+- `tests/client.test.mjs` drives those parsers with verbatim tool output (25 tests total).
 
 ### Changed
 

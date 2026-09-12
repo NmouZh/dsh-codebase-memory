@@ -1,7 +1,7 @@
 {
   "name": "dsh-codebase-memory",
   "version": "0.2.2",
-  "description": "DSH bundle that bridges the Codebase Memory MCP code knowledge graph into DSH and can keep indexed repositories fresh with an optional debounced filesystem watcher.",
+  "description": "DSH bundle that bridges the Codebase Memory MCP code knowledge graph into DSH, renders its tool calls as cards in the Web UI, and can keep indexed repositories fresh with an optional debounced filesystem watcher.",
   "license": "MIT",
   "type": "module",
   "main": "src/index.mjs",
@@ -30,7 +30,10 @@
     "knowledge-graph",
     "bundle-plugin",
     "watcher",
-    "chokidar"
+    "chokidar",
+    "toolview",
+    "client-plugin",
+    "ui"
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs",

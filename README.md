@@ -36,6 +36,31 @@ The MCP bridge in `cordis.patch.yml` uses `CODEBASE_MEMORY_MCP_BIN` or the bare 
 
 Upstream ships the `-portable` static build on Linux on every official channel; the non-portable binary dynamically links glibc 2.38+ and fails on older distributions (Debian 11, RHEL 8, Ubuntu 20.04).
 
+## Tool rendering in the Web UI
+
+The 15 `mcp__codebase_memory__*` calls do not render as raw text. The package ships a browser half that registers one keyed `tool.call.toolview` entry per tool name — the documented extension point for owning how a tool's calls appear inside a turn.
+
+Each card shows a status dot, the operation name, a one-line summary of what the call answered, and result chips (row counts, node/edge totals, truncation). Clicking the head discloses a body dispatched by tool:
+
+| Tool | Body |
+|---|---|
+| `search_graph`, `search_code` | symbol + `file:line` rows; clicking opens the file at that line |
+| `trace_path` | qualified-name groups with hop badges, callees and callers separated |
+| `get_architecture`, `detect_changes` | one section per report section, each carrying the columns it declares |
+| `get_code_snippet` | code card: symbol, kind, fan-in/out, line-numbered source, copy button |
+| `index_status`, `index_repository`, `list_projects` | key/value grid, nested collections collapsed to counts |
+| `check_index_coverage` | per-scope verdicts with a metadata-soundness marker |
+| `get_graph_schema` | node label and edge type tables, properties on demand |
+
+Anything unrecognised — including a future upstream format — falls back to plain text rather than inventing structure. A result that arrives truncated says so at the bottom of the card, because a silently partial answer reads like a complete one.
+
+Two implementation notes for anyone editing it:
+
+- **No build step.** The client half is authored directly in the `__ModuleLoader__` shape the client module system registers, importing react through the injected `require`. Edit `lib/client.js`, reload the page. The stylesheet is scoped to `.cbm-*`, inherits colour so both themes work, and honours `prefers-reduced-motion`.
+- **The parsers carry the risk**, so `tests/client.test.mjs` drives them with verbatim tool output. Two rules those tests exist to protect: a JSON payload must not be mistaken for `key: value` lines, and a trailing number is a hop distance only when the section did not declare it as a column.
+
+The host-side declaration lives in `package.json`: `exports["./client"]` names the browser entry and `dsh.client` records the platform plus the client packages it needs (`@deepseek-ai/dsh-client-ui-renderer` for the slot registry, `@deepseek-ai/dsh-client-ui-tool` for the contract). Note that `dsh.client.inject` lists *package* names for the module graph, while the browser entry's own `inject` lists *service* names (`slots`) — two separate declarations that both have to be right.
+
 ## Bundles
 
 The package registers two Cordis bundles in `cordis.patch.yml`:

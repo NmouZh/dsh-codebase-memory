@@ -36,6 +36,31 @@
 
 上游在 Linux 的所有官方渠道都发 `-portable` 静态件；非 portable 的动态链接件要求 glibc ≥ 2.38，在旧发行版（Debian 11、RHEL 8、Ubuntu 20.04）上无法启动。
 
+## Web 界面里的工具渲染
+
+15 个 `mcp__codebase_memory__*` 调用**不会**渲染成一坨原始文本。本包带一个浏览器半边：为每个工具名注册一条 keyed `tool.call.toolview` —— 这是 DSH 官方预留的扩展点，用来接管某个工具在对话流里的呈现。
+
+每张卡片包含：状态点、操作名、一行"这次调用答了什么"的摘要、以及结果芯片（行数、节点/边总数、截断标记）。点击卡片头展开正文，正文按工具分派：
+
+| 工具 | 展开后的正文 |
+|---|---|
+| `search_graph`、`search_code` | 符号 + `文件:行号` 行，**点击直接跳到该行** |
+| `trace_path` | 按限定名分组，带 hop 徽章，被调用与调用者分开 |
+| `get_architecture`、`detect_changes` | 报告里每一节一张小节卡，各自带**自己声明的列名** |
+| `get_code_snippet` | 代码卡：符号、类型、扇入/扇出、带行号的源码、复制按钮 |
+| `index_status`、`index_repository`、`list_projects` | 键值网格，嵌套集合折叠为计数 |
+| `check_index_coverage` | 每个 scope 一行结论，附 metadata 可信度标记 |
+| `get_graph_schema` | 节点标签表 + 边类型表，属性按需展开 |
+
+**认不出的形状一律退回纯文本**（包括上游未来的新格式），绝不凭空编造结构。结果被截断时卡片底部会明确写出来——一个静默残缺的答案看起来和完整的没区别。
+
+改这个文件前需要知道两点：
+
+- **没有构建步骤。** 浏览器半边直接写成客户端模块系统注册的 `__ModuleLoader__` 形状，react 由注入的 `require` 提供。改 `lib/client.js`，刷新页面即可。样式全部限定在 `.cbm-*` 下，颜色继承主题所以明暗都能用，并遵循 `prefers-reduced-motion`。
+- **风险都在解析器上**，所以 `tests/client.test.mjs` 用**真实工具输出**驱动它们。其中两条规则是测试专门守住的：JSON 载荷不能被误判成 `key: value` 行；末尾的数字**只有在该节没有把它声明为列时**才是 hop 距离。
+
+宿主侧声明在 `package.json`：`exports["./client"]` 指向浏览器入口，`dsh.client` 记录平台与所需的客户端包（`@deepseek-ai/dsh-client-ui-renderer` 提供插槽注册表、`@deepseek-ai/dsh-client-ui-tool` 提供契约）。注意 `dsh.client.inject` 里写的是**包名**（供模块图使用），而浏览器入口自己的 `inject` 写的是**服务名**（`slots`）——两份声明各管一件事，都得写对。
+
 ## Bundle 注册
 
 本包在 `cordis.patch.yml` 中注册两个 Cordis bundle：
