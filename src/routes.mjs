@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 
 // DSH webServer.register() expects an array of WebRoute objects with shape
 // `{ kind: 'exact', path, handler }`. We mirror dsh-github's pattern: parse
@@ -97,6 +97,9 @@ export function makeRoutes(svc) {
         const repoPath = normalizeRepoPath(body && body.repoPath)
         if (!repoPath) { writeJson(res, 400, { ok: false, error: 'missing repoPath' }); return }
         if (!existsSync(repoPath)) { writeJson(res, 400, { ok: false, error: 'repoPath does not exist' }); return }
+        let isDirectory = false
+        try { isDirectory = statSync(repoPath).isDirectory() } catch { isDirectory = false }
+        if (!isDirectory) { writeJson(res, 400, { ok: false, error: 'repoPath is not a directory' }); return }
         const watch = await svc.svc.start({
           repoPath,
           debounceMs: body && body.debounceMs,
@@ -175,7 +178,12 @@ export function makeRoutes(svc) {
       handler: async (req, res) => {
         if (!guardLoopback(req, res)) return
         if (req.method !== 'GET') { writeJson(res, 405, { ok: false, error: 'method not allowed: ' + req.method }); return }
-        writeJson(res, 200, { ok: true, executable: svc.cli.executable })
+        writeJson(res, 200, {
+          ok: true,
+          executable: svc.cli.executable,
+          // How the runtime was located: config | env | path | known-location | npx.
+          source: svc.cli.source,
+        })
       },
     },
   ]

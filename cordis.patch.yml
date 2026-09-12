@@ -6,21 +6,25 @@
       config:
         serverName: codebase_memory
         transport: stdio
-# Cross-platform resolution (review fix): Windows cannot spawn "npx" directly without
-# a shell, so invoke npm's npx-cli.js with the Node executable itself; on other
-# platforms resolve npx from PATH. npx -y fetches codebase-memory-mcp on first use,
-# so no pre-installed global CLI is required anywhere.
+# Runtime resolution:
+#   1. CODEBASE_MEMORY_MCP_BIN — an explicit override for non-standard installs
+#   2. "codebase-memory-mcp" — resolved through PATH, which is where every
+#      documented Linux channel puts it (~/.local/bin via install.sh, npm -g
+#      via the npm bin directory; Windows resolves the .exe/.cmd through
+#      PATHEXT)
+# There is deliberately no npx fallback here: spawn() does not retry a second
+# command, so a PATH miss fails fast with a clear error instead of silently
+# launching a downloader that needs GitHub release-asset access. The watcher
+# bundle below DOES implement the npx fallback in src/cli-bridge.mjs.
+# The !!js expressions below can only use Node globals: the loader evaluates
+# them with `with (ctx) { eval(expr) }`, so require/fs are NOT in scope.
         command: !!js >-
-          process.platform === "win32" ? process.execPath : "npx"
-        args: !!js >-
-          process.platform === "win32"
-            ? [process.execPath.replace(/\\node\.exe$/, "") + "\\node_modules\\npm\\bin\\npx-cli.js", "-y", "codebase-memory-mcp@0.10.8"]
-            : ["-y", "codebase-memory-mcp@0.10.8"]
+          process.env.CODEBASE_MEMORY_MCP_BIN || "codebase-memory-mcp"
         cwd: !!js >-
-          (process.env.TEMP || process.env.TMPDIR || "/tmp") + "/dsh-codebase-memory-session"
+          (process.env.TMPDIR || process.env.TEMP || "/tmp") + "/dsh-codebase-memory-session"
         toolCallTimeoutMs: 600000
-# Keep the Host booting even when npx/npm is missing; the watcher still works and the
-# startup error is logged instead of killing plugin load.
+# Keep the Host booting even when the runtime is missing; the watcher still
+# works and the startup error is logged instead of killing plugin load.
         failOnStartupError: false
         reconnect:
           enabled: true
@@ -64,5 +68,6 @@
           - .cs
           - .rb
           - .php
+          - .sh
           - .vue
           - .svelte

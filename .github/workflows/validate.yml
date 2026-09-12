@@ -7,11 +7,24 @@ on:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
       - name: Validate bundle manifest
         run: node scripts/validate-manifest.mjs
+      - name: Syntax check
+        run: npm run check
+      # The suite asserts platform-specific behavior (path identity, pattern
+      # case rules), so it must run on both platforms — the Windows-specific
+      # assertions are skipped elsewhere and vice versa.
+      - name: Test
+        run: npm test

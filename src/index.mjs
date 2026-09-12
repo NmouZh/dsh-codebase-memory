@@ -4,6 +4,7 @@ import { createStateStore } from './state.mjs'
 import { createCliBridge } from './cli-bridge.mjs'
 import { createWatcherService } from './watcher.mjs'
 import { makeRoutes } from './routes.mjs'
+import { canonicalRepoPath } from './paths.mjs'
 
 // Bundled under the "dsh-codebase-memory-watcher" bundle id. The
 // companion MCP-client bundle lives in the same package under
@@ -16,11 +17,12 @@ export const inject = ['webServer']
 function resolveStatePath(config) {
   const override = config && typeof config.statePath === 'string' ? config.statePath.trim() : ''
   if (override !== '') return override
-  return join(homedir(), '.dsh', 'dsh-codebase-memory', 'watcher.json')
-}
-
-function normalizePath(p) {
-  return (p || '').replace(/\\/g, '/').toLowerCase()
+  // Respect DSH_HOME like the rest of the harness; fall back to ~/.dsh so a
+  // machine without the variable behaves exactly as before.
+  const dshHome = typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME.trim() !== ''
+    ? process.env.DSH_HOME.trim()
+    : join(homedir(), '.dsh')
+  return join(dshHome, 'dsh-codebase-memory', 'watcher.json')
 }
 
 function makeLogger(ctx) {
@@ -72,7 +74,11 @@ export function apply(ctx, config = {}) {
   void (async () => {
     try {
       const existing = await state.all()
-      const knownPaths = new Set(existing.map((w) => normalizePath(w.repoPath)))
+      const knownPaths = new Set()
+      for (const record of existing) {
+        const canonical = canonicalRepoPath(record.repoPath)
+        if (canonical) knownPaths.add(canonical)
+      }
       for (const record of existing) {
         if (record.status === 'stopped') continue
         try {
@@ -94,15 +100,16 @@ export function apply(ctx, config = {}) {
           for (const project of projects) {
             const rootPath = project.root_path || project.rootPath
             if (!rootPath) continue
-            if (knownPaths.has(normalizePath(rootPath))) continue
+            const canonical = canonicalRepoPath(rootPath)
+            if (!canonical || knownPaths.has(canonical)) continue
             try {
-              await svc.start({ repoPath: rootPath })
-              knownPaths.add(normalizePath(rootPath))
+              await svc.start({ repoPath: canonical })
+              knownPaths.add(canonical)
             } catch (err) {
               log.error('[dsh-codebase-memory] auto-attach ' + rootPath + ' failed: ' + (err && err.message ? err.message : String(err)))
             }
           }
-          log.info('[dsh-codebase-memory] auto-attach complete; CLI executable=' + cli.executable)
+          log.info('[dsh-codebase-memory] auto-attach complete; CLI executable=' + cli.executable + ' (source=' + cli.source + ')')
         } catch (err) {
           log.warn('[dsh-codebase-memory] auto-attach skipped: ' + (err && err.message ? err.message : String(err)))
         }
