@@ -121,7 +121,7 @@ watcher 记录保存在 `$DSH_HOME/dsh-codebase-memory/watcher.json`（`$DSH_HOM
 从 [Releases](https://github.com/andyfan1094/dsh-codebase-memory/releases) 下载最新的 `dsh-codebase-memory-*.tgz` 并加入 profile：
 
 ```bash
-dsh plugin --profile web add ~/downloads/dsh-codebase-memory-0.2.2.tgz
+dsh plugin --profile web add ~/downloads/dsh-codebase-memory-0.3.0.tgz
 ```
 
 本地开发可改用 checkout 链接安装（必须绝对路径）：
@@ -133,7 +133,7 @@ dsh plugin --profile web add link:/home/you/src/dsh-codebase-memory
 PowerShell 写法：
 
 ```powershell
-dsh plugin --profile web add D:\downloads\dsh-codebase-memory-0.2.2.tgz
+dsh plugin --profile web add D:\downloads\dsh-codebase-memory-0.3.0.tgz
 dsh plugin --profile web add link:D:/src/dsh-codebase-memory
 ```
 

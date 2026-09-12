@@ -121,7 +121,7 @@ Watcher records live in `$DSH_HOME/dsh-codebase-memory/watcher.json` (`$DSH_HOME
 Download the newest `dsh-codebase-memory-*.tgz` from [Releases](https://github.com/andyfan1094/dsh-codebase-memory/releases) and add it to the profile:
 
 ```bash
-dsh plugin --profile web add ~/downloads/dsh-codebase-memory-0.2.2.tgz
+dsh plugin --profile web add ~/downloads/dsh-codebase-memory-0.3.0.tgz
 ```
 
 For local development, install from a checkout instead (absolute paths only):
@@ -133,7 +133,7 @@ dsh plugin --profile web add link:/home/you/src/dsh-codebase-memory
 PowerShell equivalents:
 
 ```powershell
-dsh plugin --profile web add D:\downloads\dsh-codebase-memory-0.2.2.tgz
+dsh plugin --profile web add D:\downloads\dsh-codebase-memory-0.3.0.tgz
 dsh plugin --profile web add link:D:/src/dsh-codebase-memory
 ```
 
