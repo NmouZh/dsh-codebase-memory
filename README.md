@@ -139,6 +139,20 @@ rm ~/.local/bin/codebase-memory-mcp           # install.sh channel
 | `CBM_CACHE_DIR` rejected on WSL | DrvFs mounts are world-writable (`0777`), and the runtime refuses a private cache under them (upstream issue [#1687](https://github.com/DeusData/codebase-memory-mcp/issues/1687)). Keep the cache on the Linux filesystem — the default `~/.cache/codebase-memory-mcp` is fine. |
 | Rebuilds feel slow | Each CLI call pays a fixed startup cost. Measured on Linux x64: ~5.5 s end to end with no warm daemon, ~4.5 s with one running (`codebase-memory-mcp daemon start`) — the daemon removes the boot cost, not the CLI's own per-invocation work. The plugin deliberately does not manage that lifecycle. Budget accordingly: indexing a mid-size repo takes tens of seconds. |
 
+## When the agent should reach for the graph (token cost)
+
+The 15 `mcp__codebase_memory__*` tools cost nothing until they are called, and return compact structured payloads. `read`-ing a large file or running an unbounded `grep` costs an unpredictable amount — often thousands of tokens in one shot. Routing the structural questions to the graph therefore cuts both latency and token spend:
+
+| Question shape | Use | How to keep it cheap |
+|---|---|---|
+| "Who calls X?" / "What breaks if I change X?" | `trace_path` (inbound/outbound), `detect_changes` | Keep `depth` at 2–3, raise `limit` only if truncated |
+| Architecture, layering, entry points, hotspots | `get_architecture` | **Always name `aspects` explicitly.** Never `["all"]` — it dumps everything at once |
+| Semantic lookup ("where is the retry logic?") | `search_graph` | Start with `detail:"ids"` and the default limit, then `get_code_snippet` a few candidates |
+| Multi-hop structural queries, complexity hotspots | `query_graph` | **Write your own `LIMIT`** (the ceiling is 100k rows), and return only the columns you need |
+| Reading one symbol | `get_code_snippet` | Cheaper than reading the whole file |
+
+Do **not** use the graph to see what code currently looks like (the index lags the working tree — debounce plus index time), for a small edit whose location you already know, or to verify a change you just made. On failure or an empty result, fall back to `read`/`grep` and say so rather than retrying the same call.
+
 ## Verification
 
 ```bash

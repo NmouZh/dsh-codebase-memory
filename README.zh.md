@@ -139,6 +139,20 @@ rm ~/.local/bin/codebase-memory-mcp           # install.sh 渠道
 | WSL 上 `CBM_CACHE_DIR` 被拒 | DrvFs 挂载是 `0777` 世界可写，运行时会拒绝把私有缓存放在其下（上游 issue [#1687](https://github.com/DeusData/codebase-memory-mcp/issues/1687)）。缓存留在 Linux 文件系统上，默认的 `~/.cache/codebase-memory-mcp` 即可。 |
 | 每次重建都有数秒固定开销 | 每次 CLI 调用都要付一份固定启动成本。Linux x64 实测：无常驻 daemon 约 5.5 秒，起了常驻 daemon（`codebase-memory-mcp daemon start`）约 4.5 秒——daemon 省掉的是启动部分，省不掉 CLI 自身每次调用的开销。插件刻意不托管这个生命周期。据此估算：中等规模仓库一次索引是数十秒量级。 |
 
+## 什么时候该让 agent 去查图谱（token 成本）
+
+15 个 `mcp__codebase_memory__*` 工具**不调用就不花 token**，调用时返回结构化小载荷。而 `read` 大文件、无界 `grep` 的花费不可控——一次就可能几千上万 token。所以把"结构类"问题交给图谱，同时省延迟和 token：
+
+| 问题形态 | 用 | 怎么用得便宜 |
+|---|---|---|
+| "谁调用了 X" / "改 X 会影响什么" | `trace_path`（inbound/outbound）、`detect_changes` | `depth` 保持 2–3，被截断了再加 `limit` |
+| 架构、分层、入口点、热路径 | `get_architecture` | **必须显式指定 `aspects`**，**永远不要 `["all"]`**——那是一次性倾倒 |
+| 语义查找（"重试逻辑在哪"） | `search_graph` | 先用 `detail:"ids"` 加默认 limit 扫，再对少数候选 `get_code_snippet` |
+| 多跳结构查询、复杂度热点 | `query_graph` | **自己写 `LIMIT`**（上限 10 万行），只 `RETURN` 需要的列 |
+| 读单个符号 | `get_code_snippet` | 比读整个文件便宜 |
+
+**不要**用图谱看"代码现在长什么样"（索引滞后于工作区——防抖加索引耗时）、不要用于你已知位置的小改动、也不要用它验证刚做完的改动。失败或返回空时退回 `read`/`grep` 并说明，而不是重复同一个调用。
+
 ## 验证
 
 ```bash
