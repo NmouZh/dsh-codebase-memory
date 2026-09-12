@@ -20,8 +20,13 @@
 # them with `with (ctx) { eval(expr) }`, so require/fs are NOT in scope.
         command: !!js >-
           process.env.CODEBASE_MEMORY_MCP_BIN || "codebase-memory-mcp"
-        cwd: !!js >-
-          (process.env.TMPDIR || process.env.TEMP || "/tmp") + "/dsh-codebase-memory-session"
+# Deliberately no `cwd` override: the MCP transport spawns with this directory
+# as its working directory, and a directory that does not exist (a session
+# subdirectory under /tmp, wiped on reboot) fails the spawn with ENOENT. With
+# failOnStartupError:false that surfaces as a warn, the client retries ten
+# times and then gives up with every tool unregistered — the bridge looks
+# installed while providing nothing. Inheriting the Host's working directory
+# cannot fail this way.
         toolCallTimeoutMs: 600000
 # Keep the Host booting even when the runtime is missing; the watcher still
 # works and the startup error is logged instead of killing plugin load.

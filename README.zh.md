@@ -135,6 +135,7 @@ rm ~/.local/bin/codebase-memory-mcp           # install.sh 渠道
 | npx 兜底报 `connect ECONNREFUSED 127.0.0.1:443` | 本机解析器把 `release-assets.githubusercontent.com` 打到回环，下载这一环走不通。请直接安装运行时，别依赖 `npx`；`api.github.com` 与 `raw.githubusercontent.com` 不受影响。 |
 | `<path> is outside the allowed root` | 上游运行时只索引白名单内的根。需要时显式授权：`codebase-memory-mcp allow-root <path>`，`allow-root --list` 可查看当前清单。 |
 | watcher 一直 `idle`、从不重建 | 该文件系统不投递变更事件（WSL2 的 `/mnt/*`、网络共享）。DrvFs/NFS/FUSE/CIFS 已自动覆盖；其他情况给该 watcher 设 `usePolling: true`。 |
+| 会话里没有 `mcp__codebase_memory__*` 工具 | 桥启动失败后放弃了。它只记一条 `warn`，而 `failOnStartupError: false` 让宿主照常启动、只是没有这些工具。检查宿主是否有存活的子进程（`pgrep -P <宿主pid> codebase-memory-mcp`），没有进程就说明 spawn 失败。最常见原因是配置里的 `cwd` 指向一个不存在的目录（`/tmp` 下的会话子目录，重启即被清）——删掉 `cwd` 覆盖并重启宿主。它只重试 10 次，之后不再重连。 |
 | WSL 上 `CBM_CACHE_DIR` 被拒 | DrvFs 挂载是 `0777` 世界可写，运行时会拒绝把私有缓存放在其下（上游 issue [#1687](https://github.com/DeusData/codebase-memory-mcp/issues/1687)）。缓存留在 Linux 文件系统上，默认的 `~/.cache/codebase-memory-mcp` 即可。 |
 | 每次重建都有数秒固定开销 | 每次 CLI 调用都要付一份固定启动成本。Linux x64 实测：无常驻 daemon 约 5.5 秒，起了常驻 daemon（`codebase-memory-mcp daemon start`）约 4.5 秒——daemon 省掉的是启动部分，省不掉 CLI 自身每次调用的开销。插件刻意不托管这个生命周期。据此估算：中等规模仓库一次索引是数十秒量级。 |
 
