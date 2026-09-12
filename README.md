@@ -136,7 +136,7 @@ rm ~/.local/bin/codebase-memory-mcp           # install.sh channel
 | `<path> is outside the allowed root` | The upstream runtime only indexes allow-listed roots. Grant it deliberately: `codebase-memory-mcp allow-root <path>`, or `allow-root --list` to review the current list. |
 | Watcher stays `idle` and never rebuilds | The filesystem does not deliver change events (WSL2 `/mnt/*`, network shares). Automatic detection covers DrvFs/NFS/FUSE/CIFS; for anything else set `usePolling: true` on that watch. |
 | `CBM_CACHE_DIR` rejected on WSL | DrvFs mounts are world-writable (`0777`), and the runtime refuses a private cache under them (upstream issue [#1687](https://github.com/DeusData/codebase-memory-mcp/issues/1687)). Keep the cache on the Linux filesystem — the default `~/.cache/codebase-memory-mcp` is fine. |
-| Rebuilds feel slow (seconds of overhead each) | Each CLI call starts a temporary daemon. Run `codebase-memory-mcp daemon start` once to keep one warm. The plugin deliberately does not manage that lifecycle. |
+| Rebuilds feel slow | Each CLI call pays a fixed startup cost. Measured on Linux x64: ~5.5 s end to end with no warm daemon, ~4.5 s with one running (`codebase-memory-mcp daemon start`) — the daemon removes the boot cost, not the CLI's own per-invocation work. The plugin deliberately does not manage that lifecycle. Budget accordingly: indexing a mid-size repo takes tens of seconds. |
 
 ## Verification
 

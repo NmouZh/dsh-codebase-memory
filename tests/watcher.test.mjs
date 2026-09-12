@@ -296,6 +296,39 @@ test('a rebuild requested while another rebuild runs is queued and executed', as
   await service.disposeAll()
 })
 
+test('a file edit after the initial scan triggers a debounced rebuild', async () => {
+  // Regression guard for the core feature. Two traps this test exists to catch:
+  //   1. Editing before chokidar's `ready` event lands inside the initial scan,
+  //      where chokidar reports the file as `add` and ignoreInitial swallows it.
+  //      That produced a false "the watcher never fires" diagnosis once already.
+  //   2. The ignored predicate must keep real source files — an over-eager
+  //      extension filter silently disables every rebuild.
+  const dir = await makeTmpDir('dsh-cbm-events-')
+  const source = join(dir, 'main.ts')
+  await writeFile(source, 'export const v = 1\n')
+
+  const state = createStateStore(join(dir, 'watcher.json'))
+  let calls = 0
+  const service = createWatcherService({
+    state,
+    cli: { indexRepository: async () => { calls += 1; return { status: 'indexed' } } },
+    defaults: { debounceMs: 30, mode: 'fast', ignored: ['**/node_modules/**'], watchedExtensions: ['.ts'], usePolling: false },
+    log: null,
+  })
+
+  const record = await service.start({ repoPath: dir })
+  const handle = service.handles.get(record.id)
+  await new Promise((resolve) => handle.chokidar.once('ready', resolve))
+
+  await writeFile(source, 'export const v = 2\n')
+  await waitFor(() => calls === 1, 5000)
+  await waitFor(async () => (await state.get(record.id))?.status === 'idle', 5000)
+
+  assert.equal(calls, 1)
+  assert.equal((await state.get(record.id)).lastError, '')
+  await service.disposeAll()
+})
+
 test('watcher records the canonical path and never watches a non-directory', async () => {
   const { service } = await fixture()
   const dir = await makeTmpDir('dsh-cbm-canonical-')

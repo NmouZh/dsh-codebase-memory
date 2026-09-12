@@ -41,6 +41,6 @@ The port is single-implementation: platform differences are confined to two plac
 Consequences worth knowing:
 
 - **Indexing is gated upstream.** `codebase-memory-mcp` refuses to index a path outside its allowed roots (`codebase-memory-mcp allow-root <path>`). The plugin reports that message as-is and never widens the allow-list itself — it is the operator's safety boundary, not the plugin's to change.
-- **The warm daemon is the operator's.** `cli` invocations start a temporary daemon (seconds of overhead per rebuild). `codebase-memory-mcp daemon start` keeps one warm; the plugin does not manage that lifecycle, to avoid start/stop races and orphaned processes.
+- **The warm daemon is the operator's.** `cli` invocations start a temporary daemon. Measured on Linux x64, a `list_projects` call costs ~5.5 s cold and ~4.5 s with a permanent daemon (`codebase-memory-mcp daemon start`): the daemon removes the boot cost, not the CLI's own per-invocation work. The plugin does not manage that lifecycle, to avoid start/stop races and orphaned processes.
 - **Cross-VM mounts are polled.** WSL2 DrvFs (`9p`) loses inotify events silently, so watches created there enable polling unless `usePolling` was set explicitly.
 - **The cache stays off `/mnt/*`.** Upstream rejects a private cache directory under a world-writable DrvFs parent (upstream issue #1687); the default `~/.cache/codebase-memory-mcp` is correct.
